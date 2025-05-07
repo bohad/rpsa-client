@@ -1,0 +1,89 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+env/
+venv/
+ENV/
+.venv/                  # if you use poetry's --path .venv
+build/
+dist/
+*.egg-info/
+*.egg
+*.whl
+pip-wheel-metadata/
+share/python-wheels/
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+coverage.xml
+*.cover
+*.py,cover
+.pytest_cache/
+nosetests.xml
+coverage/
+
+# Translations
+*.mo
+*.pot
+
+# VS Code
+.vscode/
+.vscode-test/
+
+# Poetry
+poetry.lock          # usually committed, but you can ignore if you prefer
+.cache/pypoetry/
+.cache/virtualenvs/
+
+# PyEnv
+.python-version
+
+# IDEs and editors
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# MacOS
+.DS_Store
+
+# Environments
+.env
+.env.*               # e.g. .env.dev, .env.prod
+
+# Mypy
+.mypy_cache/
+
+# Pyre
+.pyre/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Profiling data
+.prof
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*~
+
+# Secrets
+secret.json

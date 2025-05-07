@@ -1,0 +1,44 @@
+[tool.poetry]
+name = "rpsa-client"
+version = "0.1.0"
+description = "Python client library for the RPSA public API"
+authors = ["Adrian Bohner <adrian.bohner@onespire.hu>"]
+license = "MIT"
+readme = "README.md"
+keywords = ["rpsa", "api", "client", "httpx", "pydantic"]
+homepage = "https://github.com/you/rpsa-client"
+repository = "https://github.com/you/rpsa-client"
+documentation = "https://github.com/you/rpsa-client#readme"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Internet :: WWW/HTTP",
+]
+packages = [
+  { include = "rpsa_client" }
+]
+include = [
+  "API_documentation.md",
+  "LICENSE"
+]
+
+[tool.poetry.dependencies]
+python = ">=3.9,<4.0"
+httpx = "^0.24.1"
+pydantic = "^2.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.0"
+pytest-httpx = "^0.23"
+mypy = "^1.0"
+flake8 = "^6.0"
+
+[build-system]
+requires = ["poetry-core>=1.0"]
+build-backend = "poetry.core.masonry.api"
