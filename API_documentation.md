@@ -854,3 +854,130 @@ finally:
 | GET    | `/strategies/irregular`                  | Query: `page`, `per_page`, `sort` | Paginated list of strategies with aggregated stats over **your private arenas**.     |
 | GET    | `/strategies/{strategy_id}/results`      | Path: `strategy_id`               | Aggregated performance for one strategy (wins, losses, ties, total_score, win_rate). |
 | GET    | `/strategies/{strategy_id}/head_to_head` | Path: `strategy_id`               | Per-opponent head-to-head metrics (wins, net_score, avg_points_per_game, win_rate).  |
+
+## 7 Tips for using rpsa-client for strategy analysis using pandas library
+
+### Example 1 - new strategy analysis after running _private (irregular) arena_
+
+When you run your new strategy in an irregular arena via the UI, you can immediately pull its head-to-head matchups and detect which opponents it performed worst against (you can observe a few tendency on the UI itself, but you can get the highly detailed picture via rpsa-client).
+
+```python
+from rpsa_client import RPSAClient
+import json
+import pandas as pd
+
+with open("secrets.json", "r") as f:
+    secrets = json.load(f)
+
+API_KEY = secrets.get("api_key")
+BASE_URL = secrets.get("base_url")
+client = RPSAClient(api_key=API_KEY, base_url=BASE_URL)
+
+# 1) List your private (irregular) arenas, take the most recent
+irregs = client.list_irregular_arenas(page=1, per_page=5)
+arena_id = irregs.data[0].id
+
+# 2) Fetch the head-to-head aggregates
+matchups = client.get_arena_matchups(arena_id=arena_id)
+
+# 3) Build a DataFrame
+df = pd.DataFrame(matchups)
+# keep only rows where you’re the focal strategy
+my_id = 1
+df = df[df.strategy_id == my_id]
+
+# 4) Sort by avg_points_per_game ascending → worst opponents first
+df.sort_values("avg_points_per_game", inplace=True)
+
+print("Your weakest opponents:")
+print(
+    df[["opponent_strategy_id", "wins", "losses", "ties", "avg_points_per_game"]].head(
+        5
+    )
+)
+```
+
+### Example 2 - Track your strategy’s daily progress in the _regular arena_
+
+Every day a new regular arena runs automatically. Let’s chart your strategy’s avg_points_per_game over the last N days to see if your tweaks are improving performance.
+
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+from rpsa_client import RPSAClient
+import json
+
+with open("secrets.json", "r") as f:
+    secrets = json.load(f)
+
+API_KEY = secrets.get("api_key")
+BASE_URL = secrets.get("base_url")
+client = RPSAClient(api_key=API_KEY, base_url=BASE_URL)
+
+# 1) Fetch the first 10 regular arenas sorted by creation time
+regs = client.list_regular_arenas(page=1, per_page=10).data
+
+records = []
+my_id = 1
+for arena in regs:
+    lb = client.get_arena_leaderboard(arena.id)
+    # find your row
+    me = next(r for r in lb if r["strategy_id"] == my_id)
+    print(me)
+    records.append(
+        {
+            "arena_id": arena.id,
+            "date": arena.created_at,
+            "avg_ppg": me["avg_points_per_game"],
+        }
+    )
+
+# 2) Build time-series DataFrame
+df = pd.DataFrame(records)
+df["date"] = pd.to_datetime(df["date"])
+df.set_index("date", inplace=True)
+df.sort_index(inplace=True)
+
+# 3) Plot your trend
+plt.plot(df.index, df["avg_ppg"], marker="o")
+plt.title("Daily avg_points_per_game for strategy #%d" % my_id)
+plt.ylabel("Avg Points per Game")
+plt.xlabel("Arena Date")
+plt.tight_layout()
+plt.show()
+```
+
+### Example 3 - Analyze score distribution across all games
+
+Beyond aggregates, you might want the per-game score distribution to see if your strategy is consistent or volatile.
+
+```python
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from rpsa_client import RPSAClient
+
+client = RPSAClient(api_key="…", base_url="…")
+
+# 1) Pick an arena (regular or irregular)
+arena_id = 123
+
+# 2) List all games in that arena (first 200)
+games = client.list_arena_games(arena_id, page=1, per_page=200).data
+
+# 3) For each game, fetch the result rows and collect your 'score'
+scores = []
+my_id = YOUR_STRATEGY_ID
+for g in games:
+    rows = client.get_game_results(g.id)
+    me = next(r for r in rows if r.strategy_id == my_id)
+    scores.append(me.score)
+
+# 4) Build DataFrame and plot histogram
+df = pd.DataFrame({"score": scores})
+sns.histplot(df["score"], bins=30, kde=True)
+plt.title("Per-game Score Distribution for Strategy #%d" % my_id)
+plt.xlabel("Normalized Game Score")
+plt.ylabel("Frequency")
+plt.show()
+```
