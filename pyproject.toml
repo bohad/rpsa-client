@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "rpsa-client"
 version = "0.1.0"
-description = "Python client library for the RPSA public API"
+description = "Python client library for the Rock, Paper, Code! app public API"
 authors = ["Adrian Bohner <adrian.bohner@onespire.hu>"]
 license = "MIT"
 readme = "README.md"
