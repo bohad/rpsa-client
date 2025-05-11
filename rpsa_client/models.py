@@ -3,7 +3,7 @@
 Pydantic models mapping API JSON responses to Python objects.
 """
 from pydantic import BaseModel, Field
-from typing import List, Generic, TypeVar, Optional
+from typing import List, Generic, TypeVar, Optional, Dict, Any
 
 T = TypeVar("T")
 
@@ -28,10 +28,10 @@ class Arena(BaseModel):
     games_per_pair: int
     max_points: int
     runtime: Optional[float]
-    is_regular: bool  # ← added
-    games_played: int  # ← added
-    total_rounds: int  # ← added
-    avg_game_runtime: Optional[float]  # ← added
+    is_regular: bool
+    games_played: int
+    total_rounds: int
+    avg_game_runtime: Optional[float]
 
 
 class GameSummary(BaseModel):
@@ -39,12 +39,12 @@ class GameSummary(BaseModel):
     game_number: int
     runtime: Optional[float]
 
-    strategy_a_id: int  # ← added
-    strategy_b_id: int  # ← added
-    wins_a: int  # ← added
-    wins_b: int  # ← added
-    ties: int  # ← added
-    total_rounds: int  # ← added
+    strategy_a_id: int
+    strategy_b_id: int
+    wins_a: int
+    wins_b: int
+    ties: int
+    total_rounds: int
 
 
 class Result(BaseModel):
@@ -68,5 +68,31 @@ class StrategySummary(BaseModel):
     losses: int
     ties: int
     total_score: float
+    avg_points_per_game: float
+    games_played: int
     net_score: int
     win_rate: float
+
+
+class LeaderboardEntry(BaseModel):
+    strategy_id: int
+    strategy_name: str
+    avg_points_per_game: float
+    games_played: int
+    wins: int
+    losses: int
+    ties: int
+    net_score: int
+    win_rate: float
+
+
+class MatchupEntry(BaseModel):
+    strategy_id: int
+    opponent_strategy_id: int
+    wins: int
+    losses: int
+    ties: int
+    net_score: int
+    win_rate: float
+    avg_points_per_game: float
+    games_played: int
