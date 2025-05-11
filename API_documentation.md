@@ -44,20 +44,35 @@ from rpsa_client import RPSAClient
 with RPSAClient(api_key="YOUR_KEY",
                 base_url="https://rockpapercode.onespire.hu/api/v1/public") as client:
 
-    # 1. list arenas
-    arenas_page1 = client.list_arenas(page=1, per_page=5)
+    # 1a. list public (regular) arenas
+    regular_arenas = client.list_regular_arenas(page=1, per_page=5)
 
-    # 2. single arena
-    arena = client.get_arena(arenas_page1.data[0].id)
+    # 1b. list your private (irregular) arenas
+    my_arenas      = client.list_irregular_arenas(page=1, per_page=5)
 
-    # 3. games in that arena
-    games = client.list_games(arena.id)
+    # 2. fetch one arena’s metadata
+    arena = client.get_arena(regular_arenas.data[0].id)
 
-    # 4. full results for one game
-    results = client.get_game_results(games.data[0].id)
+    # 3a. games in that arena
+    games_regular   = client.list_arena_games(arena.id, page=1, per_page=10)
 
-    # 5. aggregate stats for a strategy
+    # 3b. or list only public games
+    games_public    = client.list_regular_games(page=1, per_page=10)
+
+    # 4. full results for a single game
+    results = client.get_game_results(games_regular.data[0].id)
+
+    # 5a. aggregate stats for all strategies in public arenas
+    stats_pub = client.list_regular_strategies(page=1, per_page=10)
+
+    # 5b. or for your private arenas
+    stats_irr = client.list_irregular_strategies(page=1, per_page=10)
+
+    # 6. details for one strategy
     summary = client.get_strategy_summary(strategy_id=results[0].strategy_id)
+
+    # 7. head-to-head vs every opponent
+    h2h     = client.get_strategy_head_to_head(strategy_id=results[0].strategy_id)
 ```
 
 All return values are **pydantic models** with IDE autocompletion.
@@ -139,7 +154,12 @@ arena = client.list_arenas(page=1, per_page = 10, sort = "created_at, asc")
 | `total`    | int  | Total number of items matching the query criteria                       |
 | `pages`    | int  | Total number of pages available based on the current `per_page` setting |
 
-### 4.2 Get Single Arena `GET /arenas/{arena_id}`
+### 4.2 List Irregular Arenas `GET /arenas/irregular`
+
+Paginated list of your private (irregular) arenas.
+**Same parameters & response fields as 4.1, but only for arenas you started.**
+
+### 4.3 Get Single Arena `GET /arenas/{arena_id}`
 
 Retrieve the detailed information of a specific arena by its ID.
 
@@ -191,7 +211,7 @@ arena = client.get_arena(arena_id=3)
 | `avg_game_runtime`  | float  | Average runtime per game                                |
 | `runtime`           | float  | Time taken to complete the arena execution (in seconds) |
 
-### 4.3 List Games in Arena `GET /arenas/{arena_id}/games`
+### 4.4 List Games in Arena `GET /arenas/{arena_id}/games`
 
 #### Path Parameters
 
@@ -255,7 +275,7 @@ games = client.list_games(page=1, per_page = 10, sort = "created_at, asc")
 | `ties`          | int    | Number of ties                                       |
 | `total_rounds`  | number | Total rounds played (should equal `rounds_per_game`) |
 
-### 4.4 Get Arena Leaderboard `GET /arenas/{arena_id}/leaderboard`
+### 4.5 Get Arena Leaderboard `GET /arenas/{arena_id}/leaderboard`
 
 Get per-strategy ranking for an arena.
 
@@ -280,7 +300,8 @@ games = client.get_arena_leaderboard(game_id = 42)
   {
     "strategy_id": 7,
     "strategy_name": "RockMaster",
-    "total_score": 12.5,
+    "avg_points_per_game": 12.5,
+    "game_played": 100,
     "wins": 50,
     "losses": 30,
     "ties": 20,
@@ -290,7 +311,8 @@ games = client.get_arena_leaderboard(game_id = 42)
   {
     "strategy_id": 3,
     "strategy_name": "PaperPro",
-    "total_score": 10.0,
+    "avg_points_per_game": 10.0,
+    "game_played": 200,
     "wins": 45,
     "losses": 35,
     "ties": 20,
@@ -303,18 +325,19 @@ games = client.get_arena_leaderboard(game_id = 42)
 
 #### Response fields
 
-| Field           | Type  | Description                                               |
-| --------------- | ----- | --------------------------------------------------------- |
-| `strategy_id`   | int   | Strategy in focus                                         |
-| `strategy_name` | str   | Public strategy name                                      |
-| `total_score`   | float | Sum of all normalized game‐scores across the entire arena |
-| `wins`          | int   | Total number of games won by this strategy                |
-| `losses`        | int   | Total number of games lost by this strategy               |
-| `ties`          | int   | Total number of games that resulted in a tie              |
-| `net_score`     | int   | `wins - losses`                                           |
-| `win_rate`      | float | `wins / (wins + losses)`, rounded to 4 decimal places     |
+| Field                 | Type  | Description                                               |
+| --------------------- | ----- | --------------------------------------------------------- |
+| `strategy_id`         | int   | Strategy in focus                                         |
+| `strategy_name`       | str   | Public strategy name                                      |
+| `avg_points_per_game` | float | Sum of all normalized game‐scores across the entire arena |
+| `games_played`        | int   | Count of games included                                   |
+| `wins`                | int   | Total number of games won by this strategy                |
+| `losses`              | int   | Total number of games lost by this strategy               |
+| `ties`                | int   | Total number of games that resulted in a tie              |
+| `net_score`           | int   | `wins - losses`                                           |
+| `win_rate`            | float | `wins / (wins + losses)`, rounded to 4 decimal places     |
 
-### 4.5 Get Arena Matchups `GET /arenas/{arena_id}/matchups`
+### 4.6 Get Arena Matchups `GET /arenas/{arena_id}/matchups`
 
 Get per-strategy ranking for an arena.
 
@@ -383,9 +406,9 @@ matchups = client.get_arena_matchups(arena_id=42)
 | `win_rate`             | float | `wins / (wins + losses)`, rounded to 4 decimal places                        |
 | `avg_points_per_game`  | float | Average of the normalized `score` field for each game, rounded to 4 decimals |
 
-### 4.6 List Games `GET /games`
+### 4.7 List Games `GET /games/regular`
 
-Get a paginated list of all visible games.
+Get a paginated list of all games from **regular arenas**.
 
 #### Query Parameters
 
@@ -466,7 +489,12 @@ games = client.list_games(page=1, per_page=5, sort="runtime,asc")
 | `ties`          | float | Number of tied rounds                                     |
 | `total_rounds`  | float | Total rounds played (equals configured `rounds_per_game`) |
 
-### 4.7 Get Game Results `GET /games/{game_id}`
+### 4.8 List Irregular Games `GET /games/irregular`
+
+Paginated list of games from your private arenas.
+**Same as 4.7, but only for arenas you started.**
+
+### 4.9 Get Game Results `GET /games/{game_id}`
 
 #### Path Parameters
 
@@ -525,7 +553,9 @@ games = client.get_game_results(game_id = 51)
 | `net_score`            | number | Difference `wins - losses`                                                  |
 | `score`                | number | Normalized, signed game‐score for this strategy (e.g. between -1.0 and 1.0) |
 
-### 4.8 List strategies `GET /strategies`
+### 4.10 List regular strategies `GET /strategies/regular`
+
+Paginated list of strategies’ aggregate metrics over public arenas.
 
 #### Query Parameters
 
@@ -606,7 +636,12 @@ strategies = client.list_strategies(page=1, per_page=10, sort="total_score,desc"
 | `net_score`     | float | Difference `wins − losses`                            |
 | `win_rate`      | float | `wins / (wins + losses)`, rounded to 4 decimal places |
 
-### 4.9 Get Strategy Summary `GET /strategies/{strategy_id}/results`
+### 4.11 List irregular strategies `GET /strategies/irregular`
+
+Paginated list of strategies’ aggregate metrics over your private arenas.
+**Uses the same schema as 4.10, but scoped to irregular arenas only.**
+
+### 4.12 Get Strategy Summary `GET /strategies/{strategy_id}/results`
 
 #### Path Parameters
 
@@ -628,31 +663,35 @@ summary = client.get_strategy_summary(strategy_id=7)
 {
   "strategy_id": 7,
   "strategy_name": "RockMaster",
-  "plays": 1000,
-  "wins": 600,
-  "losses": 300,
-  "ties": 100,
-  "total_score": 50.0,
-  "net_score": 300,
-  "win_rate": 0.6667
+  "plays": 1600,
+  "wins": 900,
+  "losses": 500,
+  "ties": 200,
+  "total_score": 75.0,
+  "avg_points_per_game": 0.0469,
+  "games_played": 1600,
+  "net_score": 400,
+  "win_rate": 0.6429
 }
 ```
 
 #### Response fields
 
-| Field           | Type  | Description                                           |
-| --------------- | ----- | ----------------------------------------------------- |
-| `strategy_id`   | int   | Strategy ID                                           |
-| `strategy_name` | int   | Human‐readable name/module of the strategy            |
-| `plays`         | float | Total number of games played                          |
-| `wins`          | int   | Total number of games won                             |
-| `losses`        | int   | Total number of games lost                            |
-| `ties`          | int   | Total number of tied games                            |
-| `total_score`   | int   | Sum of normalized game‐scores across all games        |
-| `net_score`     | float | Difference `wins − losses`                            |
-| `win_rate`      | float | `wins / (wins + losses)`, rounded to 4 decimal places |
+| Field                 | Type  | Description                                           |
+| --------------------- | ----- | ----------------------------------------------------- |
+| `strategy_id`         | int   | Strategy ID                                           |
+| `strategy_name`       | int   | Human‐readable name/module of the strategy            |
+| `plays`               | float | Total number of games played                          |
+| `wins`                | int   | Total number of games won                             |
+| `losses`              | int   | Total number of games lost                            |
+| `ties`                | int   | Total number of tied games                            |
+| `total_score`         | float | Sum of normalized game‐scores across all games        |
+| `avg_points_per_game` | float | Avg of normalized game‐scores across per games        |
+| `games_played`        | int   | Total number of games played                          |
+| `net_score`           | float | Difference `wins − losses`                            |
+| `win_rate`            | float | `wins / (wins + losses)`, rounded to 4 decimal places |
 
-### 4.10 Get Strategy Head-to-Head `GET /strategies/{strategy_id}/head_to_head`
+### 4.13 Get Strategy Head-to-Head `GET /strategies/{strategy_id}/head_to_head`
 
 Get per-opponent performance metrics for one strategy.
 
@@ -682,7 +721,8 @@ h2h = client.get_strategy_head_to_head(strategy_id=7)
     "ties": 0,
     "net_score": 10,
     "win_rate": 0.6,
-    "avg_points_per_game": 0.15
+    "avg_points_per_game": 0.15,
+    "game_played": 50
   },
   {
     "strategy_id": 7,
@@ -692,7 +732,8 @@ h2h = client.get_strategy_head_to_head(strategy_id=7)
     "ties": 0,
     "net_score": 0,
     "win_rate": 0.5,
-    "avg_points_per_game": 0.05
+    "avg_points_per_game": 0.05,
+    "game_played": 50
   },
   {
     "strategy_id": 7,
@@ -702,7 +743,8 @@ h2h = client.get_strategy_head_to_head(strategy_id=7)
     "ties": 0,
     "net_score": 20,
     "win_rate": 0.7,
-    "avg_points_per_game": 0.2
+    "avg_points_per_game": 0.2,
+    "game_played": 50
   },
   ...
 ]
@@ -720,6 +762,7 @@ h2h = client.get_strategy_head_to_head(strategy_id=7)
 | `net_score`            | number | Difference `wins - losses`                               |
 | `win_rate`             | number | `wins / (wins + losses)`, rounded to 4 decimal places    |
 | `avg_points_per_game`  | number | Average of normalized `score` per game vs this opponent  |
+| `game_played`          | int    | Number of played games                                   |
 
 ## 5. Error Handling
 
@@ -784,7 +827,8 @@ finally:
 
 | Method | Path                             | Params                                                 | Description                                                        |
 | :----- | :------------------------------- | :----------------------------------------------------- | :----------------------------------------------------------------- |
-| GET    | `/arenas`                        | Query: `page`, `per_page`                              | Paginated list of **regular** arenas + your irregular arenas.      |
+| GET    | `/arenas/regular`                | Query: `page`, `per_page`                              | Paginated list of **regular** arenas                               |
+| GET    | `/arenas/irregular`              | Query: `page`, `per_page`                              | Paginated list of your irregular arenas.                           |
 | GET    | `/arenas/{arena_id}`             | Path: `arena_id`                                       | Metadata & aggregates for one arena (must be regular or yours).    |
 | GET    | `/arenas/{arena_id}/games`       | Path: `arena_id` <br>Query: `page`, `per_page`, `sort` | Paginated games in an arena you can view.                          |
 | GET    | `/arenas/{arena_id}/leaderboard` | Path: `arena_id`                                       | Per-strategy ranking (total_score, wins, losses, win_rate, …).     |
@@ -794,10 +838,11 @@ finally:
 
 ### Games Endpoints
 
-| Method | Path               | Params                            | Description                              |
-| :----- | :----------------- | :-------------------------------- | :--------------------------------------- |
-| GET    | `/games`           | Query: `page`, `per_page`, `sort` | Paginated list of all games you may see. |
-| GET    | `/games/{game_id}` | Path: `game_id`                   | All result rows for a specific game.     |
+| Method | Path               | Params                            | Description                                               |
+| :----- | :----------------- | :-------------------------------- | :-------------------------------------------------------- |
+| GET    | `/games/regular`   | Query: `page`, `per_page`, `sort` | Paginated list of all games from **regular arenas**.      |
+| GET    | `/games/irregular` | Query: `page`, `per_page`, `sort` | Paginated list of all games from **your private arenas**. |
+| GET    | `/games/{game_id}` | Path: `game_id`                   | All result rows for a specific game.                      |
 
 ---
 
@@ -805,6 +850,7 @@ finally:
 
 | Method | Path                                     | Params                            | Description                                                                          |
 | :----- | :--------------------------------------- | :-------------------------------- | :----------------------------------------------------------------------------------- |
-| GET    | `/strategies`                            | Query: `page`, `per_page`, `sort` | Paginated list of strategies with aggregated stats (plays, total_score, win_rate).   |
+| GET    | `/strategies/regular`                    | Query: `page`, `per_page`, `sort` | Paginated list of strategies with aggregated stats over **regular arenas**.          |
+| GET    | `/strategies/irregular`                  | Query: `page`, `per_page`, `sort` | Paginated list of strategies with aggregated stats over **your private arenas**.     |
 | GET    | `/strategies/{strategy_id}/results`      | Path: `strategy_id`               | Aggregated performance for one strategy (wins, losses, ties, total_score, win_rate). |
 | GET    | `/strategies/{strategy_id}/head_to_head` | Path: `strategy_id`               | Per-opponent head-to-head metrics (wins, net_score, avg_points_per_game, win_rate).  |
